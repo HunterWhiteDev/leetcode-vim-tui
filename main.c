@@ -1,3 +1,4 @@
+#include "cJSON.h"
 #include <curl/curl.h>
 #include <curl/easy.h>
 #include <curses.h>
@@ -43,6 +44,11 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb,
   return realsize;
 }
 
+int debug_callback(CURL *handle, curl_infotype type, char *data, size_t size,
+                   void *clientp) {
+
+};
+
 int main(int argc, char **argv) {
 
   int getlogin_r(char *buf, size_t bufsize);
@@ -59,11 +65,8 @@ int main(int argc, char **argv) {
   strcat(dir, username);
   strcat(dir, "/.leetcode/config.conf");
 
-  // printf("%s", dir);
-  // printf("%c", printf(&dir[dirLen]));
-
   char *sessionToken = malloc(0);
-  char *csfrToken = malloc(0);
+  char *csrfToken = malloc(0);
 
   if (file_exists(dir)) {
     // printf("%s exists\n", dir);
@@ -92,15 +95,15 @@ int main(int argc, char **argv) {
         sessionToken = tempSessionToken;
         strcpy(sessionToken, value);
         sessionToken[strlen(sessionToken) - 1] = '\0';
-      } else if (strcmp(key, "CSFR_TOKEN") == 0) {
-        char *tempCsfrToken = realloc(csfrToken, strlen(value) + sizeof(char));
-        if (tempCsfrToken == NULL) {
-          printf("Could not reallocate csfr token string");
+      } else if (strcmp(key, "CSRF_TOKEN") == 0) {
+        char *tempCsrfToken = realloc(csrfToken, strlen(value) + sizeof(char));
+        if (tempCsrfToken == NULL) {
+          printf("Could not reallocate csrf token string");
           return 1;
         }
-        csfrToken = tempCsfrToken;
-        strcpy(csfrToken, value);
-        csfrToken[strlen(csfrToken) - 1] = '\0';
+        csrfToken = tempCsrfToken;
+        strcpy(csrfToken, value);
+        csrfToken[strlen(csrfToken) - 1] = '\0';
       }
     }
 
@@ -122,18 +125,11 @@ int main(int argc, char **argv) {
     queryArg = argv[1];
   }
 
-  char tokenHeaderStr[strlen("Cookie: LEETCODE_SESSION=") +
-                      strlen("; csfrtoken=") + strlen(sessionToken) +
-                      strlen(csfrToken) + sizeof(char)];
-  tokenHeaderStr[0] = '\0';
-  strcat(tokenHeaderStr, "Cookie: LEETCODE_SESSION=");
-  strcat(tokenHeaderStr, sessionToken);
-  strcat(tokenHeaderStr, "; csfrtoken=");
-  strcat(tokenHeaderStr, csfrToken);
-  printf("%s", tokenHeaderStr);
-
-  // struct Problem problem1;
-  // strcpy(problem1.name, "Problem 1");
+  int len = snprintf(NULL, 0, "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
+                     sessionToken, csrfToken);
+  char *tokenHeaderStr = malloc(len + 1);
+  snprintf(tokenHeaderStr, len + 1, "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
+           sessionToken, csrfToken);
 
   CURL *curl;
   CURLcode result;
@@ -144,34 +140,85 @@ int main(int argc, char **argv) {
   chunk.memory = malloc(1); /* will be grown as needed by the realloc above */
   chunk.size = 0;           /* no data at this point */
 
-  // if (curl) {
-  //   /* First set the URL that is about to receive our POST. This URL can
-  //      be an https:// URL if that is what should receive the data. */
-  //   curl_easy_setopt(curl, CURLOPT_URL, "'https://leetcode.com/graphql/");
-  //
-  //   curl_easy_setopt(curl, CURLOPT_HEADER, "Content-Type: application/json");
-  //
-  //   curl_easy_setopt(curl, CURLOPT_HEADER, tokenHeaderStr);
-  //   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-  //   curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
-  //
-  //   /* Perform the request, result gets the return code */
-  //   result = curl_easy_perform(curl);
-  //   /* Check for errors */
-  //   if (result != CURLE_OK)
-  //     fprintf(stderr, "curl_easy_perform() failed: %s\n",
-  //             curl_easy_strerror(result));
-  //   else {
-  //     // printf(chunk.memory);
-  //   }
-  //
-  //   /* always cleanup */
-  //
-  //   curl_easy_cleanup(curl);
-  // }
+  char *jsonRequestString = malloc(
+      strlen(
+          "{\"query\":\"    query searchQuestionList($filters: "
+          "QuestionFilterInput, $limit: Int, $searchKeyword: String, $skip: "
+          "Int, "
+          "$sortBy: QuestionSortByInput, $categorySlug: String) {  "
+          "problemsetQuestionListV2(    filters: $filters    limit: $limit    "
+          "searchKeyword: $searchKeyword    skip: $skip    sortBy: $sortBy    "
+          "categorySlug: $categorySlug  ) {    questions {      id      "
+          "titleSlug  "
+          "    title      translatedTitle      questionFrontendId      "
+          "paidOnly    "
+          "  difficulty      topicTags {        name        slug        "
+          "nameTranslated      }      status      isInMyFavorites      "
+          "frequency   "
+          "   acRate      contestPoint    }    totalLength    finishedLength   "
+          " "
+          "hasMore  }}    \",\"variables\":{\"searchKeyword\":\"\0") +
+      strlen(queryArg) +
+      strlen("\",\"limit\":16,\"skip\":0},\"operationName\":"
+             "\"searchQuestionList\"}"));
 
+  strcat(jsonRequestString,
+         "{\"query\":\"    query searchQuestionList($filters: "
+         "QuestionFilterInput, $limit: Int, $searchKeyword: String, $skip: "
+         "Int, "
+         "$sortBy: QuestionSortByInput, $categorySlug: String) {  "
+         "problemsetQuestionListV2(    filters: $filters    limit: $limit    "
+         "searchKeyword: $searchKeyword    skip: $skip    sortBy: $sortBy    "
+         "categorySlug: $categorySlug  ) {    questions {      id      "
+         "titleSlug  "
+         "    title      translatedTitle      questionFrontendId      "
+         "paidOnly    "
+         "  difficulty      topicTags {        name        slug        "
+         "nameTranslated      }      status      isInMyFavorites      "
+         "frequency   "
+         "   acRate      contestPoint    }    totalLength    finishedLength   "
+         " "
+         "hasMore  }}    \",\"variables\":{\"searchKeyword\":\"\0");
+  strcat(jsonRequestString, queryArg);
+  strcat(jsonRequestString, "\",\"limit\":16,\"skip\":0},\"operationName\":"
+                            "\"searchQuestionList\"}");
+
+  if (curl) {
+    /* First set the URL that is about to receive our POST. This URL can
+       be an https:// URL if that is what should receive the data. */
+    //
+
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "content-type: application/json");
+    headers = curl_slist_append(headers, tokenHeaderStr);
+
+    curl_easy_setopt(curl, CURLOPT_URL, "https://leetcode.com/graphql/");
+    curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
+
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonRequestString);
+
+    result = curl_easy_perform(curl);
+    /* Check for errors */
+    if (result != CURLE_OK)
+      fprintf(stderr, "curl_easy_perform() failed: %s\n",
+              curl_easy_strerror(result));
+    else {
+
+      printf(chunk.memory);
+    }
+
+    curl_slist_free_all(headers);
+
+    curl_easy_cleanup(curl);
+  }
+
+  free(jsonRequestString);
+  free(tokenHeaderStr);
   free(sessionToken);
-  free(csfrToken);
+  free(csrfToken);
   // return 1;
   // initscr();
   //
@@ -226,7 +273,7 @@ int main(int argc, char **argv) {
   // endwin();
   //
   // free(sessionToken);
-  // free(csfrToken);
+  // free(csrfToken);
 
   return 0;
 }
