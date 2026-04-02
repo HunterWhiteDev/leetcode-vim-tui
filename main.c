@@ -180,8 +180,10 @@ int main(int argc, char **argv) {
          " "
          "hasMore  }}    \",\"variables\":{\"searchKeyword\":\"\0");
   strcat(jsonRequestString, queryArg);
-  strcat(jsonRequestString, "\",\"limit\":16,\"skip\":0},\"operationName\":"
+  strcat(jsonRequestString, "\",\"limit\":10,\"skip\":0},\"operationName\":"
                             "\"searchQuestionList\"}");
+
+  cJSON *questions;
 
   if (curl) {
     /* First set the URL that is about to receive our POST. This URL can
@@ -207,7 +209,15 @@ int main(int argc, char **argv) {
               curl_easy_strerror(result));
     else {
 
-      printf(chunk.memory);
+      cJSON *response = cJSON_Parse(chunk.memory);
+      if (response == NULL) {
+        printf("Response is null");
+      }
+      cJSON *data = cJSON_GetObjectItem(response, "data");
+
+      cJSON *problemsetQuestionList =
+          cJSON_GetObjectItem(data, "problemsetQuestionListV2");
+      questions = cJSON_GetObjectItem(problemsetQuestionList, "questions");
     }
 
     curl_slist_free_all(headers);
@@ -219,61 +229,76 @@ int main(int argc, char **argv) {
   free(tokenHeaderStr);
   free(sessionToken);
   free(csrfToken);
-  // return 1;
-  // initscr();
-  //
-  // int yMax, xMax;
-  // getmaxyx(stdscr, yMax, xMax);
-  //
-  // WINDOW *mennuwin = newwin(0, 0, 0, 0);
-  //
-  // noecho();
-  // cbreak();
-  //
-  // wrefresh(mennuwin);
-  // refresh();
-  //
-  // struct Problem problem2;
-  // strcpy(problem2.name, "Problem 2");
-  //
-  // struct Problem problems[] = {problem1, problem2};
-  //
-  // // sizeof() returns the size in bytes, to change it to the correct index
-  // // divide it by the size of the first elemeent ini the array
+
+  initscr();
+
+  int yMax, xMax;
+  getmaxyx(stdscr, yMax, xMax);
+
+  WINDOW *mennuwin = newwin(0, 0, 0, 0);
+
+  noecho();
+  cbreak();
+
+  wrefresh(mennuwin);
+  refresh();
+
+  struct Problem problem2;
+  strcpy(problem2.name, "Problem 2");
+
+  // sizeof() returns the size in bytes, to change it to the correct index
+  // divide it by the size of the first elemeent ini the array
   // int length = sizeof(problems) / sizeof(problems[0]);
-  // int selectedIdx = 0;
-  //
-  // while (1) {
-  //
-  //   for (int i = 0; i < length; i++) {
-  //
-  //     if (selectedIdx == i) {
-  //       wattron(mennuwin, A_REVERSE);
-  //     }
-  //     mvwprintw(mennuwin, i + 1, 2, problems[i].name);
-  //     wattroff(mennuwin, A_REVERSE);
-  //   }
-  //
-  //   int input = wgetch(mennuwin);
-  //
-  //   if (input == 'j') {
-  //     if (selectedIdx >= length - 1) {
-  //       selectedIdx = 0;
-  //     } else {
-  //       selectedIdx++;
-  //     }
-  //   } else if (input == 'k') {
-  //     if (selectedIdx == 0) {
-  //       selectedIdx = length - 1;
-  //     } else {
-  //       selectedIdx--;
-  //     }
-  //   }
+
+  // if (selectedIdx == i) {
+  //   wattron(mennuwin, A_REVERSE);
   // }
-  // endwin();
-  //
-  // free(sessionToken);
-  // free(csrfToken);
+  // mvwprintw(mennuwin, i + 1, 2, problems[i].name);
+  // wattroff(mennuwin, A_REVERSE);
+
+  int selectedIdx = 0;
+
+  while (1) {
+
+    const cJSON *element = NULL;
+    int idx = 0;
+    cJSON_ArrayForEach(element, questions) {
+      cJSON *title = cJSON_GetObjectItem(element, "title");
+      char *titleString = cJSON_Print(title);
+
+      if (selectedIdx == idx) {
+        wattron(mennuwin, A_REVERSE);
+      }
+
+      mvwprintw(mennuwin, idx + 1, 2, titleString);
+      idx++;
+
+      wattroff(mennuwin, A_REVERSE);
+    }
+
+    int input = wgetch(mennuwin);
+
+    if (input == 'j') {
+      if (selectedIdx >= idx - 1) {
+        selectedIdx = 0;
+      } else {
+        selectedIdx++;
+      }
+    } else if (input == 'k') {
+      if (selectedIdx == 0) {
+        selectedIdx = idx - 1;
+      } else {
+        selectedIdx--;
+      }
+    } else if (input == 'f') {
+      endwin();
+      return 0;
+    }
+  }
+  endwin();
+
+  free(sessionToken);
+  free(csrfToken);
 
   return 0;
 }
