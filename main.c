@@ -14,6 +14,53 @@
 #define TRUE 1
 #define FALSE 0
 
+// You must free the result if result is non-NULL.
+char *str_replace(char *orig, char *rep, char *with) {
+  char *result;  // the return string
+  char *ins;     // the next insert point
+  char *tmp;     // varies
+  int len_rep;   // length of rep (the string to remove)
+  int len_with;  // length of with (the string to replace rep with)
+  int len_front; // distance between rep and end of last rep
+  int count;     // number of replacements
+
+  // sanity checks and initialization
+  if (!orig || !rep)
+    return NULL;
+  len_rep = strlen(rep);
+  if (len_rep == 0)
+    return NULL; // empty rep causes infinite loop during count
+  if (!with)
+    with = "";
+  len_with = strlen(with);
+
+  // count the number of replacements needed
+  ins = orig;
+  for (count = 0; (tmp = strstr(ins, rep)); ++count) {
+    ins = tmp + len_rep;
+  }
+
+  tmp = result = malloc(strlen(orig) + (len_with - len_rep) * count + 1);
+
+  if (!result)
+    return NULL;
+
+  // first time through the loop, all the variable are set correctly
+  // from here on,
+  //    tmp points to the end of the result string
+  //    ins points to the next occurrence of rep in orig
+  //    orig points to the remainder of orig after "end of rep"
+  while (count--) {
+    ins = strstr(orig, rep);
+    len_front = ins - orig;
+    tmp = strncpy(tmp, orig, len_front) + len_front;
+    tmp = strcpy(tmp, with) + len_with;
+    orig += len_front + len_rep; // move to next "end of rep"
+  }
+  strcpy(tmp, orig);
+  return result;
+}
+
 void remove_all_chars(char *str, char c) {
   char *pr = str, *pw = str;
   while (*pr) {
@@ -176,6 +223,7 @@ void loadQuestion(char *slugTitle, char *tokenHeaderStr, char *username) {
       int isStripping = 0;
 
       for (int i = 0; i < jsonStringLen; i++) {
+
         if (jsonString[i] == '<') {
           isStripping = 1;
         }
@@ -207,19 +255,56 @@ void loadQuestion(char *slugTitle, char *tokenHeaderStr, char *username) {
         };
       }
 
+      char *commentedString = malloc(strlen(strippedString));
+      strcat(commentedString, "/*");
+      strcat(commentedString, strippedString);
+      strcat(commentedString, "*/");
+
+      remove_all_chars(strippedString, '"');
+
       cJSON *code = cJSON_GetObjectItem(langSnippet, "code");
       char *codeString = cJSON_Print(code);
 
       printf("%s", codeString);
 
+      // TODO: Figure out why this code is breaking \n char
       int contentStringLen =
-          snprintf(NULL, 0, "%s \n %s", strippedString, codeString);
+          snprintf(NULL, 0, "%s\n \n %s\n", commentedString, codeString);
       char *contentString = malloc(contentStringLen + 1);
 
-      snprintf(contentString, contentStringLen + 1, "%s \n %s", strippedString,
-               codeString);
+      snprintf(contentString, contentStringLen + 1, "%s\n \n %s\n",
+               commentedString, codeString);
 
-      printf("%s", contentString);
+      // printf("%s", contentString);
+
+      char *parsedContent = malloc(contentStringLen);
+
+      bool skipChar = false;
+      int lastPIdx = 0;
+
+      for (int i = 0; i < contentStringLen; i++) {
+
+        // Skip here
+
+        if (contentString[i] == '\\' && contentString[i + 1] == 'n') {
+          parsedContent[lastPIdx] = '\n';
+          lastPIdx++;
+
+          skipChar = true;
+          continue;
+        }
+
+        if (skipChar == true) {
+          skipChar = false;
+          continue;
+        } else {
+          parsedContent[lastPIdx] = contentString[i];
+          skipChar = false;
+          lastPIdx++;
+        }
+      }
+
+      remove_all_chars(parsedContent, '"');
 
       int fileStringLen =
           snprintf(NULL, 0, "/home/%s/.leetcode/problems/JavaScript/%s.js",
@@ -230,17 +315,16 @@ void loadQuestion(char *slugTitle, char *tokenHeaderStr, char *username) {
                slugTitle);
       fileString[fileStringLen + 1] = '\0';
 
-      printf("%s", fileString);
-
       FILE *fptr;
 
-      fptr = fopen(fileString, "wt");
-      fprintf(fptr, "%s", contentString);
+      fptr = fopen(fileString, "w");
+      fprintf(fptr, "%s", parsedContent);
 
       fclose(fptr);
 
       free(fileString);
       free(contentString);
+      free(commentedString);
     }
 
     curl_slist_free_all(headers);

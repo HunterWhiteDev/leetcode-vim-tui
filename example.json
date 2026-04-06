@@ -1,0 +1,33 @@
+{
+  "data": {
+    "problemsetQuestionListV2": {
+      "questions": [
+        {
+          "difficulty": "EASY",
+          "id": 1,
+          "paidOnly": false,
+          "questionFrontendId": "1",
+          "status": "SOLVED",
+          "title": "Two Sum",
+          "titleSlug": "two-sum",
+          "topicTags": [
+            { "name": "Array", "slug": "array", "__typename": "CommonTagNode" },
+            {
+              "name": "Hash Table",
+              "slug": "hash-table",
+              "__typename": "CommonTagNode"
+            }
+          ],
+          "frequency": null,
+          "isInMyFavorites": false,
+          "acRate": 0.572791954880404,
+          "contestPoint": null,
+          "__typename": "ProblemSetQuestionNode"
+        }
+      ],
+      "totalLength": 398,
+      "finishedLength": 8,
+      "hasMore": true
+    }
+  }
+}
