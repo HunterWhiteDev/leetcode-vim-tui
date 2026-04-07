@@ -11,8 +11,6 @@
 #include <string.h>
 #include <sys/stat.h> // stat
 #include <unistd.h>
-#define TRUE 1
-#define FALSE 0
 
 // You must free the result if result is non-NULL.
 char *str_replace(char *orig, char *rep, char *with) {
@@ -212,10 +210,18 @@ void loadQuestion(char *slugTitle, char *tokenHeaderStr, char *username) {
         printf("Response is null");
       }
       cJSON *data = cJSON_GetObjectItem(response, "data");
+
+      char *responseStr = cJSON_Print(response);
+      printf("%s", responseStr);
+
       cJSON *question = cJSON_GetObjectItem(data, "question");
+
+      char *questionStr = cJSON_Print(question);
+
       cJSON *content = cJSON_GetObjectItem(question, "content");
 
       char *jsonString = cJSON_Print(content);
+      printf(jsonString);
       int jsonStringLen = strlen(jsonString);
       char strippedString[jsonStringLen + 1];
 
@@ -267,7 +273,6 @@ void loadQuestion(char *slugTitle, char *tokenHeaderStr, char *username) {
 
       printf("%s", codeString);
 
-      // TODO: Figure out why this code is breaking \n char
       int contentStringLen =
           snprintf(NULL, 0, "%s\n \n %s\n", commentedString, codeString);
       char *contentString = malloc(contentStringLen + 1);
@@ -291,6 +296,11 @@ void loadQuestion(char *slugTitle, char *tokenHeaderStr, char *username) {
           lastPIdx++;
 
           skipChar = true;
+
+          if (contentString[i + 2] == '\\' && contentString[i + 3] == 'n') {
+            i = i + 2;
+          }
+
           continue;
         }
 
@@ -321,6 +331,13 @@ void loadQuestion(char *slugTitle, char *tokenHeaderStr, char *username) {
       fprintf(fptr, "%s", parsedContent);
 
       fclose(fptr);
+      char nvimCmd[fileStringLen + 9];
+      nvimCmd[0] = '\0';
+
+      strcat(nvimCmd, "/bin/nvim ");
+      strcat(nvimCmd, fileString);
+
+      system(nvimCmd);
 
       free(fileString);
       free(contentString);
