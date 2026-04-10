@@ -3,6 +3,7 @@
 #include "fetchQuestions.h"
 #include "loadQuestion.h"
 #include "remove_all_chars.h"
+#include "solveQuestion.h"
 #include "testQuestion.h"
 #include <curl/curl.h>
 #include <curl/easy.h>
@@ -102,8 +103,13 @@ int main(int argc, char **argv) {
     char *arg = argv[i];
     if (strcmp(arg, "--test") == 0) {
       char *fileName = argv[i + 1];
-
       testQuestion(tokenHeaderStr, fileName, csrfToken);
+      return 0;
+    }
+
+    if (strcmp(arg, "--solve") == 0) {
+      char *fileName = argv[i + 1];
+      solveQuestion(tokenHeaderStr, fileName, csrfToken);
       return 0;
     }
   }
