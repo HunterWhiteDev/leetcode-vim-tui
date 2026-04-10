@@ -1,7 +1,13 @@
 #include "cJSON.h"
+#include "debugCallback.h"
+#include "fetchQuestions.h"
+#include "loadQuestion.h"
+#include "remove_all_chars.h"
+#include "testQuestion.h"
 #include <curl/curl.h>
 #include <curl/easy.h>
 #include <curses.h>
+#include <locale.h>
 #include <ncurses.h>
 #include <regex.h>
 #include <stdbool.h>
@@ -12,344 +18,9 @@
 #include <sys/stat.h> // stat
 #include <unistd.h>
 
-// You must free the result if result is non-NULL.
-char *str_replace(char *orig, char *rep, char *with) {
-  char *result;  // the return string
-  char *ins;     // the next insert point
-  char *tmp;     // varies
-  int len_rep;   // length of rep (the string to remove)
-  int len_with;  // length of with (the string to replace rep with)
-  int len_front; // distance between rep and end of last rep
-  int count;     // number of replacements
-
-  // sanity checks and initialization
-  if (!orig || !rep)
-    return NULL;
-  len_rep = strlen(rep);
-  if (len_rep == 0)
-    return NULL; // empty rep causes infinite loop during count
-  if (!with)
-    with = "";
-  len_with = strlen(with);
-
-  // count the number of replacements needed
-  ins = orig;
-  for (count = 0; (tmp = strstr(ins, rep)); ++count) {
-    ins = tmp + len_rep;
-  }
-
-  tmp = result = malloc(strlen(orig) + (len_with - len_rep) * count + 1);
-
-  if (!result)
-    return NULL;
-
-  // first time through the loop, all the variable are set correctly
-  // from here on,
-  //    tmp points to the end of the result string
-  //    ins points to the next occurrence of rep in orig
-  //    orig points to the remainder of orig after "end of rep"
-  while (count--) {
-    ins = strstr(orig, rep);
-    len_front = ins - orig;
-    tmp = strncpy(tmp, orig, len_front) + len_front;
-    tmp = strcpy(tmp, with) + len_with;
-    orig += len_front + len_rep; // move to next "end of rep"
-  }
-  strcpy(tmp, orig);
-  return result;
-}
-
-void remove_all_chars(char *str, char c) {
-  char *pr = str, *pw = str;
-  while (*pr) {
-    *pw = *pr++;
-    pw += (*pw != c);
-  }
-  *pw = '\0';
-}
-
 bool file_exists(char *filename) {
   struct stat buffer;
   return (stat(filename, &buffer) == 0);
-}
-
-struct MemoryStruct {
-  char *memory;
-  size_t size;
-};
-
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb,
-                                  void *userp) {
-  size_t realsize = size * nmemb;
-  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
-
-  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
-  if (mem->memory == NULL) {
-    /* out of memory! */
-    printf("not enough memory (realloc returned NULL)\n");
-    return 0;
-  }
-
-  memcpy(&(mem->memory[mem->size]), contents, realsize);
-  mem->size += realsize;
-  mem->memory[mem->size] = 0;
-
-  return realsize;
-}
-
-int debug_callback(CURL *handle, curl_infotype type, char *data, size_t size,
-                   void *clientp) {
-
-};
-
-void loadQuestion(char *slugTitle, char *tokenHeaderStr, char *username) {
-
-  int len = snprintf(
-      NULL, 0,
-      "{\"query\":\"query questionDetail($titleSlug: String!) {  "
-      "languageList {    id    name  }  submittableLanguageList {    id    "
-      "name    verboseName  }  statusList {    id    name  }  "
-      "questionDiscussionTopic(questionSlug: $titleSlug) {    id    "
-      "commentCount    topLevelCommentCount  }  "
-      "ugcArticleOfficialSolutionArticle(questionSlug: $titleSlug) {    "
-      "uuid   "
-      " chargeType    canSee    hasVideoArticle  }  question(titleSlug: "
-      "$titleSlug) {    title    titleSlug    questionId    "
-      "questionFrontendId "
-      "   questionTitle    translatedTitle    content    translatedContent "
-      "   "
-      "categoryTitle    difficulty    stats    companyTagStatsV2    "
-      "topicTags "
-      "{      name      slug      translatedName    }    positionLevelTags "
-      "{   "
-      "   name      nameTranslated      slug    }    similarQuestionList { "
-      "    "
-      " difficulty      titleSlug      title      translatedTitle      "
-      "isPaidOnly    }    mysqlSchemas    dataSchemas    frontendPreviews  "
-      "  "
-      "likes    dislikes    isPaidOnly    status    canSeeQuestion    "
-      "enableTestMode    metaData    enableRunCode    enableSubmit    "
-      "enableDebugger    envInfo    isLiked    nextChallenges {      "
-      "difficulty      title      titleSlug      questionFrontendId    }   "
-      " "
-      "libraryUrl    adminUrl    hints    codeSnippets {      code      "
-      "lang   "
-      "   langSlug    }    exampleTestcaseList    hasFrontendPreview    "
-      "featuredContests {      titleSlug      title    }  }}    "
-      "\",\"variables\":{\"titleSlug\":\"%s\"},\"operationName\":"
-      "\"questionDetail\"}",
-      slugTitle);
-
-  char *queryString = malloc(len + 1);
-  snprintf(
-      queryString, len + 1,
-      "{\"query\":\"query questionDetail($titleSlug: String!) {  "
-      "languageList {    id    name  }  submittableLanguageList {    id    "
-      "name    verboseName  }  statusList {    id    name  }  "
-      "questionDiscussionTopic(questionSlug: $titleSlug) {    id    "
-      "commentCount    topLevelCommentCount  }  "
-      "ugcArticleOfficialSolutionArticle(questionSlug: $titleSlug) {    "
-      "uuid   "
-      " chargeType    canSee    hasVideoArticle  }  question(titleSlug: "
-      "$titleSlug) {    title    titleSlug    questionId    "
-      "questionFrontendId "
-      "   questionTitle    translatedTitle    content    translatedContent "
-      "   "
-      "categoryTitle    difficulty    stats    companyTagStatsV2    "
-      "topicTags "
-      "{      name      slug      translatedName    }    positionLevelTags "
-      "{   "
-      "   name      nameTranslated      slug    }    similarQuestionList { "
-      "    "
-      " difficulty      titleSlug      title      translatedTitle      "
-      "isPaidOnly    }    mysqlSchemas    dataSchemas    frontendPreviews  "
-      "  "
-      "likes    dislikes    isPaidOnly    status    canSeeQuestion    "
-      "enableTestMode    metaData    enableRunCode    enableSubmit    "
-      "enableDebugger    envInfo    isLiked    nextChallenges {      "
-      "difficulty      title      titleSlug      questionFrontendId    }   "
-      " "
-      "libraryUrl    adminUrl    hints    codeSnippets {      code      "
-      "lang   "
-      "   langSlug    }    exampleTestcaseList    hasFrontendPreview    "
-      "featuredContests {      titleSlug      title    }  }}    "
-      "\",\"variables\":{\"titleSlug\":\"%s\"},\"operationName\":"
-      "\"questionDetail\"}",
-      slugTitle);
-
-  CURL *curl;
-  CURLcode result;
-  curl = curl_easy_init();
-  if (curl) {
-    struct MemoryStruct chunk;
-
-    chunk.memory = malloc(1); /* will be grown as needed by the realloc above */
-    chunk.size = 0;           /* no data at this point */
-
-    struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "content-type: application/json");
-    headers = curl_slist_append(headers, tokenHeaderStr);
-
-    curl_easy_setopt(curl, CURLOPT_URL, "https://leetcode.com/graphql/");
-    curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
-
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, queryString);
-
-    result = curl_easy_perform(curl);
-    /* Check for errors */
-    if (result != CURLE_OK)
-      fprintf(stderr, "curl_easy_perform() failed: %s\n",
-              curl_easy_strerror(result));
-    else {
-
-      cJSON *response = cJSON_Parse(chunk.memory);
-      if (response == NULL) {
-        printf("Response is null");
-      }
-      cJSON *data = cJSON_GetObjectItem(response, "data");
-
-      char *responseStr = cJSON_Print(response);
-      printf("%s", responseStr);
-
-      cJSON *question = cJSON_GetObjectItem(data, "question");
-
-      char *questionStr = cJSON_Print(question);
-
-      cJSON *content = cJSON_GetObjectItem(question, "content");
-
-      char *jsonString = cJSON_Print(content);
-      printf(jsonString);
-      int jsonStringLen = strlen(jsonString);
-      char strippedString[jsonStringLen + 1];
-
-      int lastIdx = 0;
-      int isStripping = 0;
-
-      for (int i = 0; i < jsonStringLen; i++) {
-
-        if (jsonString[i] == '<') {
-          isStripping = 1;
-        }
-
-        if (isStripping == 0) {
-
-          strippedString[lastIdx] = jsonString[i];
-          strippedString[lastIdx + 1] = '\0';
-          lastIdx++;
-        }
-
-        if (jsonString[i] == '>') {
-          isStripping = 0;
-        }
-      }
-
-      cJSON *codeSnippets = cJSON_GetObjectItem(question, "codeSnippets");
-
-      cJSON *langSnippet;
-
-      cJSON *element;
-      cJSON_ArrayForEach(element, codeSnippets) {
-        cJSON *lang = cJSON_GetObjectItem(element, "lang");
-        char *langString = cJSON_Print(lang);
-        remove_all_chars(langString, '"');
-        int cmp = strcmp(langString, "JavaScript");
-        if (cmp == 0) {
-          langSnippet = element;
-        };
-      }
-
-      char *commentedString = malloc(strlen(strippedString));
-      strcat(commentedString, "/*");
-      strcat(commentedString, strippedString);
-      strcat(commentedString, "*/");
-
-      remove_all_chars(strippedString, '"');
-
-      cJSON *code = cJSON_GetObjectItem(langSnippet, "code");
-      char *codeString = cJSON_Print(code);
-
-      printf("%s", codeString);
-
-      int contentStringLen =
-          snprintf(NULL, 0, "%s\n \n %s\n", commentedString, codeString);
-      char *contentString = malloc(contentStringLen + 1);
-
-      snprintf(contentString, contentStringLen + 1, "%s\n \n %s\n",
-               commentedString, codeString);
-
-      // printf("%s", contentString);
-
-      char *parsedContent = malloc(contentStringLen);
-
-      bool skipChar = false;
-      int lastPIdx = 0;
-
-      for (int i = 0; i < contentStringLen; i++) {
-
-        // Skip here
-
-        if (contentString[i] == '\\' && contentString[i + 1] == 'n') {
-          parsedContent[lastPIdx] = '\n';
-          lastPIdx++;
-
-          skipChar = true;
-
-          if (contentString[i + 2] == '\\' && contentString[i + 3] == 'n') {
-            i = i + 2;
-          }
-
-          continue;
-        }
-
-        if (skipChar == true) {
-          skipChar = false;
-          continue;
-        } else {
-          parsedContent[lastPIdx] = contentString[i];
-          skipChar = false;
-          lastPIdx++;
-        }
-      }
-
-      remove_all_chars(parsedContent, '"');
-
-      int fileStringLen =
-          snprintf(NULL, 0, "/home/%s/.leetcode/problems/JavaScript/%s.js",
-                   username, slugTitle);
-      char *fileString = malloc(fileStringLen + 1);
-      snprintf(fileString, fileStringLen + 1,
-               "/home/%s/.leetcode/problems/JavaScript/%s.js", username,
-               slugTitle);
-      fileString[fileStringLen + 1] = '\0';
-
-      FILE *fptr;
-
-      fptr = fopen(fileString, "w");
-      fprintf(fptr, "%s", parsedContent);
-
-      fclose(fptr);
-      char nvimCmd[fileStringLen + 9];
-      nvimCmd[0] = '\0';
-
-      strcat(nvimCmd, "/bin/nvim ");
-      strcat(nvimCmd, fileString);
-
-      system(nvimCmd);
-
-      free(fileString);
-      free(contentString);
-      free(commentedString);
-    }
-
-    curl_slist_free_all(headers);
-
-    curl_easy_cleanup(curl);
-  }
-
-  free(queryString);
 }
 
 int main(int argc, char **argv) {
@@ -389,8 +60,7 @@ int main(int argc, char **argv) {
       value = strtok(NULL, "= ");
 
       if (strcmp(key, "LEETCODE_SESSION") == 0) {
-        char *tempSessionToken =
-            realloc(sessionToken, strlen(value) + sizeof(char));
+        char *tempSessionToken = realloc(sessionToken, strlen(value));
         if (tempSessionToken == NULL) {
           printf("Could not reallocate access token string");
           return 1;
@@ -399,7 +69,7 @@ int main(int argc, char **argv) {
         strcpy(sessionToken, value);
         sessionToken[strlen(sessionToken) - 1] = '\0';
       } else if (strcmp(key, "CSRF_TOKEN") == 0) {
-        char *tempCsrfToken = realloc(csrfToken, strlen(value) + sizeof(char));
+        char *tempCsrfToken = realloc(csrfToken, strlen(value));
         if (tempCsrfToken == NULL) {
           printf("Could not reallocate csrf token string");
           return 1;
@@ -422,6 +92,22 @@ int main(int argc, char **argv) {
 
   char *queryArg = NULL;
 
+  int len = snprintf(NULL, 0, "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
+                     sessionToken, csrfToken);
+  char *tokenHeaderStr = malloc(len + 1);
+  snprintf(tokenHeaderStr, len + 1, "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
+           sessionToken, csrfToken);
+
+  for (int i = 0; i < argc; i++) {
+    char *arg = argv[i];
+    if (strcmp(arg, "--test") == 0) {
+      char *fileName = argv[i + 1];
+
+      testQuestion(tokenHeaderStr, fileName, csrfToken);
+      return 0;
+    }
+  }
+
   if (!argv[1]) {
     printf("No query string provided");
     return 0;
@@ -429,12 +115,58 @@ int main(int argc, char **argv) {
     queryArg = argv[1];
   }
 
-  int len = snprintf(NULL, 0, "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
-                     sessionToken, csrfToken);
-  char *tokenHeaderStr = malloc(len + 1);
-  snprintf(tokenHeaderStr, len + 1, "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
-           sessionToken, csrfToken);
+  int jsonRequestStringLen = snprintf(
+      NULL, 0,
+      "{\"query\":\"query searchQuestionList($filters:"
+      "QuestionFilterInput, $limit: Int, $searchKeyword: String, $skip:"
+      "Int,"
+      "$sortBy: QuestionSortByInput, $categorySlug: String) {  "
+      "problemsetQuestionListV2(    filters: $filters    limit: $limit    "
+      "searchKeyword: $searchKeyword    skip: $skip    sortBy: $sortBy    "
+      "categorySlug: $categorySlug  ) {    questions {      id      "
+      "titleSlug  "
+      "    title      translatedTitle      questionFrontendId      "
+      "paidOnly    "
+      "  difficulty      topicTags {        name        slug        "
+      "nameTranslated      }      status      isInMyFavorites      "
+      "frequency   "
+      "   acRate      contestPoint    }    totalLength    finishedLength   "
+      "hasMore  }}    \",\"variables\":{\"searchKeyword\": \"%s\",\"limit\":"
+      "20,\"skip\":"
+      "0},"
+      "\"operationN"
+      "ame\":"
+      "\"searchQues"
+      "tionList\"}",
+      queryArg);
 
+  char *jsonRequestString = malloc(jsonRequestStringLen + 1);
+  snprintf(
+      jsonRequestString, jsonRequestStringLen + 1,
+      "{\"query\":\"query searchQuestionList($filters:"
+      "QuestionFilterInput, $limit: Int, $searchKeyword: String, $skip:"
+      "Int,"
+      "$sortBy: QuestionSortByInput, $categorySlug: String) {  "
+      "problemsetQuestionListV2(    filters: $filters    limit: $limit    "
+      "searchKeyword: $searchKeyword    skip: $skip    sortBy: $sortBy    "
+      "categorySlug: $categorySlug  ) {    questions {      id      "
+      "titleSlug  "
+      "    title      translatedTitle      questionFrontendId      "
+      "paidOnly    "
+      "  difficulty      topicTags {        name        slug        "
+      "nameTranslated      }      status      isInMyFavorites      "
+      "frequency   "
+      "   acRate      contestPoint    }    totalLength    finishedLength   "
+      "hasMore  }}    \",\"variables\":{\"searchKeyword\": \"%s\",\"limit\":"
+      "20,\"skip\":"
+      "0},"
+      "\"operationN"
+      "ame\":"
+      "\"searchQues"
+      "tionList\"}",
+      queryArg);
+
+  cJSON *questions;
   CURL *curl;
   CURLcode result;
   curl = curl_easy_init();
@@ -444,58 +176,13 @@ int main(int argc, char **argv) {
   chunk.memory = malloc(1); /* will be grown as needed by the realloc above */
   chunk.size = 0;           /* no data at this point */
 
-  char *jsonRequestString = malloc(
-      strlen(
-          "{\"query\":\"    query searchQuestionList($filters: "
-          "QuestionFilterInput, $limit: Int, $searchKeyword: String, $skip: "
-          "Int, "
-          "$sortBy: QuestionSortByInput, $categorySlug: String) {  "
-          "problemsetQuestionListV2(    filters: $filters    limit: $limit    "
-          "searchKeyword: $searchKeyword    skip: $skip    sortBy: $sortBy    "
-          "categorySlug: $categorySlug  ) {    questions {      id      "
-          "titleSlug  "
-          "    title      translatedTitle      questionFrontendId      "
-          "paidOnly    "
-          "  difficulty      topicTags {        name        slug        "
-          "nameTranslated      }      status      isInMyFavorites      "
-          "frequency   "
-          "   acRate      contestPoint    }    totalLength    finishedLength   "
-          " "
-          "hasMore  }}    \",\"variables\":{\"searchKeyword\":\"\0") +
-      strlen(queryArg) +
-      strlen("\",\"limit\":16,\"skip\":0},\"operationName\":"
-             "\"searchQuestionList\"}"));
-
-  strcat(jsonRequestString,
-         "{\"query\":\"    query searchQuestionList($filters: "
-         "QuestionFilterInput, $limit: Int, $searchKeyword: String, $skip: "
-         "Int, "
-         "$sortBy: QuestionSortByInput, $categorySlug: String) {  "
-         "problemsetQuestionListV2(    filters: $filters    limit: $limit    "
-         "searchKeyword: $searchKeyword    skip: $skip    sortBy: $sortBy    "
-         "categorySlug: $categorySlug  ) {    questions {      id      "
-         "titleSlug  "
-         "    title      translatedTitle      questionFrontendId      "
-         "paidOnly    "
-         "  difficulty      topicTags {        name        slug        "
-         "nameTranslated      }      status      isInMyFavorites      "
-         "frequency   "
-         "   acRate      contestPoint    }    totalLength    finishedLength   "
-         " "
-         "hasMore  }}    \",\"variables\":{\"searchKeyword\":\"\0");
-  strcat(jsonRequestString, queryArg);
-  strcat(jsonRequestString, "\",\"limit\":10,\"skip\":0},\"operationName\":"
-                            "\"searchQuestionList\"}");
-
-  cJSON *questions;
-
   if (curl) {
     /* First set the URL that is about to receive our POST. This URL can
        be an https:// URL if that is what should receive the data. */
     //
 
     struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "content-type: application/json");
+    headers = curl_slist_append(headers, "content-type: application/json ");
     headers = curl_slist_append(headers, tokenHeaderStr);
 
     curl_easy_setopt(curl, CURLOPT_URL, "https://leetcode.com/graphql/");
@@ -518,6 +205,7 @@ int main(int argc, char **argv) {
         printf("Response is null");
       }
       cJSON *data = cJSON_GetObjectItem(response, "data");
+      printf("%s", cJSON_Print(data));
 
       cJSON *problemsetQuestionList =
           cJSON_GetObjectItem(data, "problemsetQuestionListV2");
@@ -533,6 +221,8 @@ int main(int argc, char **argv) {
   free(tokenHeaderStr);
   free(sessionToken);
   free(csrfToken);
+
+  setlocale(LC_ALL, "");
 
   initscr();
 
@@ -556,16 +246,53 @@ int main(int argc, char **argv) {
     cJSON_ArrayForEach(element, questions) {
       cJSON *title = cJSON_GetObjectItem(element, "title");
       char *titleString = cJSON_Print(title);
+      char *paidOnly = cJSON_Print(cJSON_GetObjectItem(element, "paidOnly"));
+      char *difficulty =
+          cJSON_Print(cJSON_GetObjectItem(element, "difficulty"));
+      char *status = cJSON_Print(cJSON_GetObjectItem(element, "status"));
+      remove_all_chars(paidOnly, '"');
       remove_all_chars(titleString, '"');
+      remove_all_chars(difficulty, '"');
+      remove_all_chars(status, '"');
+
+      use_default_colors();
+      start_color(); /* Start color 			*/
+
+      if (strcmp(difficulty, "EASY") == 0) {
+
+        init_pair(idx + 1, COLOR_GREEN, -1);
+      } else if (strcmp(difficulty, "MEDIUM") == 0) {
+        init_pair(idx + 1, COLOR_YELLOW, -1);
+      } else if (strcmp(difficulty, "HARD") == 0) {
+        init_pair(idx + 1, COLOR_RED, -1);
+      } else {
+        init_pair(idx + 1, COLOR_BLACK, -1);
+      }
+
+      wattron(mennuwin, COLOR_PAIR(idx + 1));
 
       if (selectedIdx == idx) {
         wattron(mennuwin, A_REVERSE);
       }
 
-      mvwprintw(mennuwin, idx + 1, 2, titleString);
-      idx++;
+      int titleLen = strlen(titleString);
 
+      if (strcmp(status, "SOLVED") == 0) {
+        strcat(titleString, " ✔️");
+      }
+
+      if (strcmp(paidOnly, "true") == 0) {
+        strcat(titleString, " ⭐");
+      }
+
+      mvwprintw(mennuwin, idx + 1, 2, "%d%s%s", idx + 1, ") ", titleString);
+
+      // mvwprintw(mennuwin, idx + 1, titleLen + 10, "%d%s", idx, difficulty);
+
+      wattroff(mennuwin, COLOR_PAIR(idx + 1));
       wattroff(mennuwin, A_REVERSE);
+
+      idx++;
     }
 
     int input = wgetch(mennuwin);
