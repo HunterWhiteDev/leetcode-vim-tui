@@ -112,7 +112,6 @@ void testQuestion(char *tokenHeaderStr, char *fileName, char *csrftoken) {
 
     struct curl_slist *headers = NULL;
 
-    // TODO: Append x-csrftoken header and referer header here.
     headers = curl_slist_append(headers, "content-type: application/json");
     headers = curl_slist_append(headers, tokenHeaderStr);
     headers = curl_slist_append(headers, csrfTokenHeaderString);
@@ -134,7 +133,6 @@ void testQuestion(char *tokenHeaderStr, char *fileName, char *csrftoken) {
               curl_easy_strerror(result));
     else {
       cJSON *responseJson = cJSON_Parse(chunk.memory);
-      // printf("%s", cJSON_Print(responseJson));
       char *interpretId =
           cJSON_Print(cJSON_GetObjectItem(responseJson, "interpret_id"));
 
@@ -153,8 +151,7 @@ void testQuestion(char *tokenHeaderStr, char *fileName, char *csrftoken) {
       printf("%s", url);
 
       int requestCount = 0;
-      while (requestCount < 2) {
-        printf("%s", "Loading...");
+      while (requestCount < 4) {
         sleep(3);
         CURL *curl2;
         CURLcode result2;
@@ -165,15 +162,6 @@ void testQuestion(char *tokenHeaderStr, char *fileName, char *csrftoken) {
           chunk2.memory =
               malloc(1);   /* will be grown as needed by the realloc above */
           chunk2.size = 0; /* no data at this point */
-
-          // struct curl_slist *headers = NULL;
-
-          // headers =
-          //     curl_slist_append(headers, "content-type: application/json");
-          // headers = curl_slist_append(headers, tokenHeaderStr);
-          // headers = curl_slist_append(headers, csrfTokenHeaderString);
-          // headers = curl_slist_append(
-          //     headers, "Referer: https://leetcode.com/problems/two-sum/");
 
           curl_easy_setopt(curl2, CURLOPT_URL, url);
           curl_easy_setopt(curl2, CURLOPT_DEBUGFUNCTION, debug_callback);
@@ -191,14 +179,11 @@ void testQuestion(char *tokenHeaderStr, char *fileName, char *csrftoken) {
           }
 
           else {
-            printf("%s", "Request");
-            printf("Some Request Completed");
             requestCount++;
             cJSON *responseJson = cJSON_Parse(chunk2.memory);
             char *state =
                 cJSON_Print(cJSON_GetObjectItem(responseJson, "state"));
             remove_all_chars(state, '"');
-            printf("%s", state);
 
             if (strcmp(state, "SUCCESS") == 0) {
               printf("Success");
