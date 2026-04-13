@@ -36,11 +36,15 @@ You will see a screen that looks like this:
 ![Search View!](./docs/assets/view1.png)
 
 ⭐ Indicates a question only available to premium members.
+
 ✔️ Indicates you have solved the problem.
 
 Problem are colored coded based ontheir difficulty with the following format:
+
 Green: Easy Problem
+
 Orange: Medium Problem
+
 Red: Hard Problem
 
 Use `j` to go up. `k` to go down. `f` selects a problem. When a problem is selected, it will be written to disk at `~/.leetcode/problems/JavaScript/{problemname}.js` (Right now only JS is supported. Multi langage support will be coming soon)
