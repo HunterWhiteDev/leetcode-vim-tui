@@ -33,7 +33,7 @@ This will search for all questions with the name "two sum". You can put whatever
 
 You will see a screen that looks like this:
 
-![Searvh View](./docs/assets/view1.png)
+![Search View!](./docs/assets/view1.png)
 
 Use `j` to go up. `k` to go down. `f` selects a problem. When a problem is selected, it will be written to disk at `~/.leetcode/problems/JavaScript/{problemname}.js` (Right now only JS is supported. Multi langage support will be coming soon)
 
