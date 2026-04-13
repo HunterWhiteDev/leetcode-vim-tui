@@ -1,4 +1,4 @@
-# Vim Leetcode TUI
+# Leetcode Vim TUI
 
 Solve leetcode questions directly in your terminal with vim keybinds!
 
