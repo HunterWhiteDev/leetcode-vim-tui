@@ -35,6 +35,14 @@ You will see a screen that looks like this:
 
 ![Search View!](./docs/assets/view1.png)
 
+⭐ Indicates a question only available to premium members.
+✔️ Indicates you have solved the problem.
+
+Problem are colored coded based ontheir difficulty with the following format:
+Green: Easy Problem
+Orange: Medium Problem
+Red: Hard Problem
+
 Use `j` to go up. `k` to go down. `f` selects a problem. When a problem is selected, it will be written to disk at `~/.leetcode/problems/JavaScript/{problemname}.js` (Right now only JS is supported. Multi langage support will be coming soon)
 
 Neovim will then open that file. (Multi editor support will also be coming soon)
@@ -42,7 +50,7 @@ Problem explaination will be in a comment block at the top. You will see the exp
 
 ### letcode --test {filename}.js
 
-This will test the given file. (default directory is ~/.leetcode/problems/JavaScript/)
+This will test the given file. (default directory is `~/.leetcode/problems/JavaScript/`)
 This will return print either `success` or `fail` in the terminal.
 
 ### letcode --solve {filename}.js
