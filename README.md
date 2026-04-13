@@ -48,12 +48,12 @@ Use `j` to go up. `k` to go down. `f` selects a problem. When a problem is selec
 Neovim will then open that file. (Multi editor support will also be coming soon)
 Problem explaination will be in a comment block at the top. You will see the explaination and examples before the code block.
 
-### letcode --test {filename}.js
+### `letcode --test {filename}.js`
 
 This will test the given file. (default directory is `~/.leetcode/problems/JavaScript/`)
 This will return print either `success` or `fail` in the terminal.
 
-### letcode --solve {filename}.js
+### `letcode --solve {filename}.js`
 
-Same as the `--test` command. This will submmit the given file.
+Same as the `--test` command. This will submit the given file.
 This will return print either `success` or `fail` in the terminal.
