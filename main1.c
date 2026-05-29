@@ -12,10 +12,11 @@
 #include <ncurses.h>
 #include <regex.h>
 #include <stdbool.h>
+#include <stdbool.h> // bool type
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
+#include <sys/stat.h> // stat
 #include <unistd.h>
 
 bool file_exists(char *filename) {
@@ -24,15 +25,11 @@ bool file_exists(char *filename) {
 }
 
 int main(int argc, char **argv) {
+  mkdir("~/.leetcode",S_IRWXU);
+  int getlogin_r(char *buf, size_t bufsize);
 
   char *p_username = getlogin();
-
-  if (p_username == NULL) {
-    fprintf(stderr, "Could not get username\n");
-    return 1;
-  }
-
-  char username[strlen(p_username) + 1];
+  char username[strlen(p_username)];
   strcpy(username, p_username);
 
   int dirLen = strlen(username) + strlen("/home//.leetcode/config.conf") + 1;
@@ -41,13 +38,6 @@ int main(int argc, char **argv) {
 
   strcat(dir, "/home/");
   strcat(dir, username);
-
-  char leetcodeDir[strlen(dir) + strlen("/.leetcode") + 1];
-  strcpy(leetcodeDir, dir);
-  strcat(leetcodeDir, "/.leetcode");
-
-  mkdir(leetcodeDir, S_IRWXU);
-
   strcat(dir, "/.leetcode/config.conf");
 
   char *sessionToken = NULL;
@@ -63,114 +53,70 @@ int main(int argc, char **argv) {
     char *key = NULL;
 
     fptr = fopen(dir, "r");
-
-    if (fptr == NULL) {
-      fprintf(stderr, "Could not open config file\n");
-      return 1;
-    }
-
     while (getline(&line, &allocatedSize, fptr) != -1) {
+      strtok(line, "= ");
 
-      key = strtok(line, "= ");
+      key = line;
       value = strtok(NULL, "= ");
 
-      if (key == NULL || value == NULL) {
-        continue;
-      }
-
       if (strcmp(key, "LEETCODE_SESSION") == 0) {
-
-        char *tempSessionToken =
-            realloc(sessionToken, strlen(value) + 1);
-
+        char *tempSessionToken = realloc(sessionToken, strlen(value)+1);
         if (tempSessionToken == NULL) {
           printf("Could not reallocate access token string");
           return 1;
         }
-
-        sessionToken = tempSessionToken;
-
+        if (sessionToken < value) {
+           fprintf(stderr,"value is bigger than sessionToken size.This could lead to buffer overflow.\n") ;
+            return 1;
+        }
         strcpy(sessionToken, value);
-        sessionToken[strcspn(sessionToken, "\n")] = '\0';
-
+        sessionToken[strlen(sessionToken) - 1] = '\0';
       } else if (strcmp(key, "CSRF_TOKEN") == 0) {
-
-        char *tempCsrfToken =
-            realloc(csrfToken, strlen(value) + 1);
-
+        char *tempCsrfToken = realloc(csrfToken, strlen(value) + 1);
         if (tempCsrfToken == NULL) {
           printf("Could not reallocate csrf token string");
           return 1;
         }
-
         csrfToken = tempCsrfToken;
-
         strcpy(csrfToken, value);
-        csrfToken[strcspn(csrfToken, "\n")] = '\0';
+        csrfToken[strlen(csrfToken) - 1] = '\0';
       }
     }
 
+    // Write some text to the file
     fclose(fptr);
-    free(line);
 
   } else {
-
     FILE *fptr;
     fptr = fopen(dir, "w");
-
-    if (fptr == NULL) {
-      fprintf(stderr, "Could not create config file\n");
-      return 1;
-    }
-
     printf("%s does not exist\n", dir);
     fclose(fptr);
   }
 
   char *queryArg = NULL;
 
-  int len = snprintf(NULL, 0,
-                     "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
-                     sessionToken ? sessionToken : "",
-                     csrfToken ? csrfToken : "");
-
+  int len = snprintf(NULL, 0, "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
+                     sessionToken, csrfToken);
   char *tokenHeaderStr = malloc(len + 1);
-
-  snprintf(tokenHeaderStr, len + 1,
-           "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
-           sessionToken ? sessionToken : "",
-           csrfToken ? csrfToken : "");
+  snprintf(tokenHeaderStr, len + 1, "Cookie: LEETCODE_SESSION=%s; csrftoken=%s",
+           sessionToken, csrfToken);
 
   for (int i = 0; i < argc; i++) {
-
     char *arg = argv[i];
-
     if (strcmp(arg, "--test") == 0) {
-
-      if (i + 1 >= argc) {
-        fprintf(stderr, "Missing file name\n");
-        return 1;
-      }
-
       char *fileName = argv[i + 1];
       testQuestion(tokenHeaderStr, fileName, csrfToken);
       return 0;
     }
 
     if (strcmp(arg, "--solve") == 0) {
-
-      if (i + 1 >= argc) {
-        fprintf(stderr, "Missing file name\n");
-        return 1;
-      }
-
       char *fileName = argv[i + 1];
       solveQuestion(tokenHeaderStr, fileName, csrfToken);
       return 0;
     }
   }
 
-  if (argc < 2 || !argv[1]) {
+  if (!argv[1]) {
     printf("No query string provided");
     return 0;
   } else {
@@ -203,7 +149,6 @@ int main(int argc, char **argv) {
       queryArg);
 
   char *jsonRequestString = malloc(jsonRequestStringLen + 1);
-
   snprintf(
       jsonRequestString, jsonRequestStringLen + 1,
       "{\"query\":\"query searchQuestionList($filters:"
@@ -236,10 +181,13 @@ int main(int argc, char **argv) {
 
   struct MemoryStruct chunk;
 
-  chunk.memory = malloc(1);
-  chunk.size = 0;
+  chunk.memory = malloc(1); /* will be grown as needed by the realloc above */
+  chunk.size = 0;           /* no data at this point */
 
   if (curl) {
+    /* First set the URL that is about to receive our POST. This URL can
+       be an https:// URL if that is what should receive the data. */
+    //
 
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "content-type: application/json ");
@@ -254,30 +202,29 @@ int main(int argc, char **argv) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonRequestString);
 
     result = curl_easy_perform(curl);
-
+    /* Check for errors */
     if (result != CURLE_OK)
       fprintf(stderr, "curl_easy_perform() failed: %s\n",
               curl_easy_strerror(result));
     else {
 
       cJSON *response = cJSON_Parse(chunk.memory);
-
       if (response == NULL) {
         printf("Response is null");
       }
-
       cJSON *data = cJSON_GetObjectItem(response, "data");
       printf("%s", cJSON_Print(data));
 
       cJSON *problemsetQuestionList =
           cJSON_GetObjectItem(data, "problemsetQuestionListV2");
-
       questions = cJSON_GetObjectItem(problemsetQuestionList, "questions");
     }
 
     curl_slist_free_all(headers);
+
     curl_easy_cleanup(curl);
   }
+
 
   setlocale(LC_ALL, "");
 
@@ -298,40 +245,25 @@ int main(int argc, char **argv) {
 
   while (1) {
 
-    werase(mennuwin);
-
     const cJSON *element = NULL;
     int idx = 0;
-
     cJSON_ArrayForEach(element, questions) {
-
       cJSON *title = cJSON_GetObjectItem(element, "title");
-
-      char *rawTitle = cJSON_Print(title);
-      char *paidOnly =
-          cJSON_Print(cJSON_GetObjectItem(element, "paidOnly"));
-
+      char *titleString = cJSON_Print(title);
+      char *paidOnly = cJSON_Print(cJSON_GetObjectItem(element, "paidOnly"));
       char *difficulty =
           cJSON_Print(cJSON_GetObjectItem(element, "difficulty"));
-
-      char *status =
-          cJSON_Print(cJSON_GetObjectItem(element, "status"));
-
+      char *status = cJSON_Print(cJSON_GetObjectItem(element, "status"));
       remove_all_chars(paidOnly, '"');
-      remove_all_chars(rawTitle, '"');
+      remove_all_chars(titleString, '"');
       remove_all_chars(difficulty, '"');
       remove_all_chars(status, '"');
 
-      size_t titleBufferSize = strlen(rawTitle) + 32;
-
-      char *titleString = malloc(titleBufferSize);
-
-      strcpy(titleString, rawTitle);
-
       use_default_colors();
-      start_color();
+      start_color(); /* Start color 			*/
 
       if (strcmp(difficulty, "EASY") == 0) {
+
         init_pair(idx + 1, COLOR_GREEN, -1);
       } else if (strcmp(difficulty, "MEDIUM") == 0) {
         init_pair(idx + 1, COLOR_YELLOW, -1);
@@ -347,6 +279,8 @@ int main(int argc, char **argv) {
         wattron(mennuwin, A_REVERSE);
       }
 
+      int titleLen = strlen(titleString);
+
       if (strcmp(status, "SOLVED") == 0) {
         strcat(titleString, " ✔️");
       }
@@ -355,67 +289,45 @@ int main(int argc, char **argv) {
         strcat(titleString, " ⭐");
       }
 
-      mvwprintw(mennuwin, idx + 1, 2, "%d%s%s",
-                idx + 1, ") ", titleString);
+      mvwprintw(mennuwin, idx + 1, 2, "%d%s%s", idx + 1, ") ", titleString);
+
+      // mvwprintw(mennuwin, idx + 1, titleLen + 10, "%d%s", idx, difficulty);
 
       wattroff(mennuwin, COLOR_PAIR(idx + 1));
       wattroff(mennuwin, A_REVERSE);
 
-      free(rawTitle);
-      free(titleString);
-      free(paidOnly);
-      free(difficulty);
-      free(status);
-
       idx++;
     }
-
-    wrefresh(mennuwin);
 
     int input = wgetch(mennuwin);
 
     if (input == 'j') {
-
       if (selectedIdx >= idx - 1) {
         selectedIdx = 0;
       } else {
         selectedIdx++;
       }
-
     } else if (input == 'k') {
-
       if (selectedIdx == 0) {
         selectedIdx = idx - 1;
       } else {
         selectedIdx--;
       }
-
     } else if (input == 'f') {
-
       cJSON *question = cJSON_GetArrayItem(questions, selectedIdx);
-
-      cJSON *titleSlug =
-          cJSON_GetObjectItem(question, "titleSlug");
-
+      cJSON *titleSlug = cJSON_GetObjectItem(question, "titleSlug");
       char *titleSlugString = cJSON_Print(titleSlug);
-
       remove_all_chars(titleSlugString, '"');
 
       loadQuestion(titleSlugString, tokenHeaderStr, username);
 
-      free(titleSlugString);
-
       return 0;
     }
   }
-
   endwin();
 
   free(sessionToken);
   free(csrfToken);
-  free(tokenHeaderStr);
-  free(jsonRequestString);
-  free(chunk.memory);
 
   return 0;
 }
