@@ -66,7 +66,6 @@ void solveQuestion(char *tokenHeaderStr, char *fileName, char *csrfToken) {
   remove_all_chars(slug, '"');
 
   char *lang = "javascript\0";
-
   int len = snprintf(NULL, 0,
                      "{ \"lang\": \"%s\", \"question_id\": %s, "
                      "\"typed_code\": \" %s \" }",
