@@ -25,7 +25,7 @@ bool file_exists(char *filename) {
 }
 
 int main(int argc, char **argv) {
-
+  mkdir("~/.leetcode",S_IRWXU);
   int getlogin_r(char *buf, size_t bufsize);
 
   char *p_username = getlogin();
@@ -40,8 +40,8 @@ int main(int argc, char **argv) {
   strcat(dir, username);
   strcat(dir, "/.leetcode/config.conf");
 
-  char *sessionToken = malloc(0);
-  char *csrfToken = malloc(0);
+  char *sessionToken = NULL;
+  char *csrfToken = NULL;
 
   if (file_exists(dir)) {
     // printf("%s exists\n", dir);
@@ -61,16 +61,19 @@ int main(int argc, char **argv) {
       value = strtok(NULL, "= ");
 
       if (strcmp(key, "LEETCODE_SESSION") == 0) {
-        char *tempSessionToken = realloc(sessionToken, strlen(value));
+        char *tempSessionToken = realloc(sessionToken, strlen(value)+1);
         if (tempSessionToken == NULL) {
           printf("Could not reallocate access token string");
           return 1;
         }
-        sessionToken = tempSessionToken;
+        if (sessionToken < value) {
+           fprintf(stderr,"value is bigger than sessionToken size.This could lead to buffer overflow.\n") ;
+            return 1;
+        }
         strcpy(sessionToken, value);
         sessionToken[strlen(sessionToken) - 1] = '\0';
       } else if (strcmp(key, "CSRF_TOKEN") == 0) {
-        char *tempCsrfToken = realloc(csrfToken, strlen(value));
+        char *tempCsrfToken = realloc(csrfToken, strlen(value) + 1);
         if (tempCsrfToken == NULL) {
           printf("Could not reallocate csrf token string");
           return 1;
